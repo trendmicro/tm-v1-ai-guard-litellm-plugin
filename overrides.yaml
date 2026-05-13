@@ -1,0 +1,36 @@
+volumes:
+  - name: plugin-volume
+    emptyDir: {}
+
+volumeMounts:
+  - name: plugin-volume
+    mountPath: /etc/litellm/trendai_guard.py
+    subPath: trendai_guard.py
+
+extraInitContainers:
+  - name: download-trendai-guard
+    image: curlimages/curl:8.19.0
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: PLUGIN_REPO
+        value: "trendmicro/tm-v1-ai-guard-litellm-plugin"
+      - name: PLUGIN_VERSION
+        value: "v0.1.0"
+      - name: PLUGIN_FILE_NAME
+        value: "trendai_guard.py"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+
+        DOWNLOAD_URL="https://github.com/${PLUGIN_REPO}/releases/download/${PLUGIN_VERSION}/${PLUGIN_FILE_NAME}"
+
+        echo "Downloading Trend AI Guard plugin ${PLUGIN_VERSION} from ${DOWNLOAD_URL}..."
+        curl -fsSL "${DOWNLOAD_URL}" -o "/plugin-volume/${PLUGIN_FILE_NAME}"
+
+        test -s "/plugin-volume/${PLUGIN_FILE_NAME}"
+
+    volumeMounts:
+      - name: plugin-volume
+        mountPath: /plugin-volume
