@@ -31,7 +31,7 @@ except Exception:
 
 OPENAI_CHAT_COMPLETION_RESPONSE_V1 = "OpenAIChatCompletionResponseV1"
 TMV1_CLIENT_NAME = "litellm"
-PLUGIN_VERSION = "0.1.0"
+PLUGIN_VERSION = "v0.1.1"
 
 
 class GuardRedactedChoiceMessage(BaseModel):
