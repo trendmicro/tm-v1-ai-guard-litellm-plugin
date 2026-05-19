@@ -1,79 +1,90 @@
 # TrendAI LiteLLM Guardrail
 
-LiteLLM Guardrail integration with the [AI Guard API](https://docs.trendmicro.com/en-us/documentation/article/trend-vision-one-ai-guard-api-reference)
+Integrate the TrendAI Vision One™ AI Guard API with [LiteLLM](https://docs.litellm.ai/docs/) to enforce content guardrails on large language model requests and responses.
 
 ## Prerequisites
 
-### Obtaining an API Key
+### Obtain an API Key
 
-Navigate to the **Workflow and Automation** -> **Third-Party Integrations** -> **LiteLLM** page in the Vision One console and click the "Generate Token" button to obtain an API key.
+1. In the Vision One console, navigate to **Workflow and Automation** > **Third-Party Integrations** > **LiteLLM**.
+2. Click **Generate Token** to create an API key.
 
-Note: the account used to create the API key should be in the V1 region that corresponds to where your LiteLLM deployment is located.
+**Note:** The account used to generate the API key must be in the same V1 region where your LiteLLM deployment resides.
 
-### Obtaining the AI Guard Base URL
+### Obtain the AI Guard Base URL
 
-#### TrendAI Hosted
-Navigate to the LiteLLM third party integrations page in the Vision One console and copy the Endpoint URL.
+The procedure for obtaining the base URL depends on your AI Guard deployment model.
 
-#### Self-hosted AWS
-In the AWS management console open the AI Guard CloudFormation stack and copy the `GuardAPIEndpoint` in the **Outputs** tab.
+**TrendAI Hosted**
 
-#### Self-hosted Kubernetes
-Use the internal Kubernetes Service URL exposed by the AI Guard Helm release.
+On the LiteLLM third-party integrations page in TrendAI Vision One™, copy the **Endpoint URL**.
 
-If LiteLLM is deployed in the same namespace as AI Guard, set `api_base` to:
+**Self-Hosted AWS**
 
-`http://<ai-guard-service-name>:8080`
+1. In the AWS management console, open the AI Guard CloudFormation stack and click the **Outputs** tab.
+2. Copy `GuardAPIEndpoint`.
 
-If LiteLLM is deployed in a different namespace, use the fully qualified in-cluster DNS name:
+**Self-Hosted Kubernetes**
 
-`http://<ai-guard-service-name>.<namespace>.svc.cluster.local:8080`
+Use the internal Kubernetes Service URL exposed by the AI Guard Helm release. The URL format depends on the namespace where LiteLLM is deployed:
 
-For example, with the default Helm install of the AI Guard Helm chart, the service is typically reachable as:
+- **Same namespace as AI Guard:** `http://<ai-guard-service-name>:8080`
+- **Different namespace:** `http://<ai-guard-service-name>.<namespace>.svc.cluster.local:8080`
 
-`http://ai-guard:8080` (same namespace)
+For example, with the default AI Guard Helm chart installation, the service is reachable as:
 
-or
+- `http://ai-guard:8080` (same namespace)
+- `http://ai-guard.trend-ai-security.svc.cluster.local:8080` (different namespace)
 
-`http://ai-guard.trend-ai-security.svc.cluster.local:8080` (different namespace)
-
-## Configuration
+## Configure the LiteLLM Guardrail
 
 ### Required Parameters
-- `guardrail`: Set to `trendai_guard.TrendAIGuardrail`
-- `api_base`: Base URL for the AI Guard API (e.g. `https://api.xdr.trendmicro.com/v3.0/aiSecurity`, `https://api.eu.xdr.trendmicro.com/v3.0/aiSecurity`).
-- `api_key`: API key for authenticating with the AI Guard API. It is recommended to set this to an environment variable (e.g. `os.environ/TMV1_API_KEY`)
-- `app_name`: Name of the application for tracking in the Vision One console (default: `litellm`)
+
+| Parameter | Description | Use |
+|-----------|-------------|-----|
+| `guardrail` | Specifies the guardrail module. | Set to `trendai_guard.TrendAIGuardrail`. |
+| `api_base` | Base URL for the AI Guard API. | Examples: `https://api.xdr.trendmicro.com/v3.0/aiSecurity`, `https://api.eu.xdr.trendmicro.com/v3.0/aiSecurity`, or the Kubernetes service URL obtained in the prerequisites. |
+| `api_key` | API key for authenticating with the AI Guard API. | Set this as an environment variable (e.g., `os.environ/TMV1_API_KEY`) to avoid storing credentials in configuration files. |
+| `mode` | Specifies when the guardrail runs. | Set to `[pre_call, post_call]` to scan prompts before sending to the LLM and scan responses after receiving from the LLM. |
 
 ### Optional Parameters
-- `fallback_on_error`: Policy for handling errors when making Guard API requests (`block` or `allow`, default: `block`)
-- `timeout`: Timeout for API requests (default: 5.0 seconds)
 
-### Example `config.yaml`
+| Parameter | Description | Use |
+|-----------|-------------|-----|
+| `app_name` | Name of the application for tracking and identification in the Vision One console. | Default: `litellm`. |
+| `default_on` | Whether the guardrail runs on every request without requiring explicit user specification. | Default: `false`. |
+| `fallback_on_error` | Policy for handling errors when making Guard API requests. | Specify `block` to reject requests on error, or `allow` to permit requests on error. Default: `block`. |
+| `timeout` | Timeout for API requests, in seconds. | Default: `5.0`. |
+
+### Example Configuration
+
+Add the following to your `config.yaml` file:
+
 ```yaml
 guardrails:
   - guardrail_name: "trendai-guard"
     litellm_params:
-      guardrail: trendai_guard.TrendAIGuardrail
-      mode: [pre_call, post_call]
-      default_on: true # run on every request without needing the user to specify it
-      api_base: http://ai-guard:8080
-      api_key: os.environ/TMV1_API_KEY
-      app_name: litellm
-      fallback_on_error: block
-      timeout: 5.0
+      guardrail: trendai_guard.TrendAIGuardrail          # Required
+      mode: [pre_call, post_call]                        # Required
+      api_base: http://ai-guard:8080                     # Required; adjust URL for your deployment
+      api_key: os.environ/TMV1_API_KEY                   # Required; set environment variable
+      app_name: litellm                                  # Optional; customize for your application
+      default_on: true                                   # Optional; enable by default
+      fallback_on_error: block                           # Optional; block requests on API errors
+      timeout: 5.0                                       # Optional; request timeout in seconds
 ```
 
-## Deployment
+## Deploy the LiteLLM Guardrail
 
-Ensure that `trendai_guard.py` is located in the same directory as your `config.yaml` file or provide the appropriate relative path to the module in the `guardrail` parameter.
+Ensure that the `trendai_guard.py` module is in the same directory as your `config.yaml` file, or provide the correct relative path in the `guardrail` parameter.
 
-### Docker Run
+### Docker Deployment
+
+Run the following command to deploy LiteLLM with the TrendAI guardrail:
 
 ```bash
 docker run -d \
   -p 4000:4000 \
-  -e OPENAI_API_KEY=$OPENAI_API_KEY \
   -e TMV1_API_KEY=$TMV1_API_KEY \
   -v $(pwd)/my_config.yaml:/app/config.yaml \
   -v $(pwd)/trendai_guard.py:/app/trendai_guard.py \
@@ -81,30 +92,45 @@ docker run -d \
   --config /app/config.yaml --detailed_debug
 ```
 
-### Helm
-For convenience, we provide an overrides file for the LiteLLM Helm chart that downloads and mounts the `trendai_guard.py` module to the config directory via `extraInitContainers`.
+**Environment variables:**
+- `TMV1_API_KEY` — API key obtained in the prerequisites.
 
-LiteLLM Helm chart version `1.81.6+` required (`1.83.10+` recommended).
+**Note:** LiteLLM supports multiple LLM providers and various methods for configuring model credentials, including the LiteLLM UI and API. The example above does not include LLM provider credentials. Add the environment variables required by your LLM provider (for example, `OPENAI_API_KEY` for OpenAI) to the `docker run` command. For more information, see the [LiteLLM documentation](https://docs.litellm.ai/docs/).
 
-Before installing, ensure you have a custom values file for your LiteLLM release configured with the above guardrail parameters in `proxy_config`. For details on configuring the values file, refer to the [LiteLLM Helm Chart documentation](https://github.com/BerriAI/litellm/blob/main/deploy/charts/litellm-helm/README.md).
+### Helm Deployment
 
-For the `api_key` parameter, populate the `TMV1_API_KEY` environment variable from a Kubernetes Secret:
+**Supported versions:** LiteLLM Helm chart version `1.81.6` or later (`1.83.10` or later recommended).
 
-Create a `tmv1-api-key` secret and populate it with a `TMV1_API_KEY` entry:
+#### Before You Start
+
+Prepare a custom values file for your LiteLLM Helm release that includes the guardrail parameters in the `proxy_config` section. For configuration details, refer to the [LiteLLM Helm Chart README](https://github.com/BerriAI/litellm/blob/main/deploy/charts/litellm-helm/README.md).
+
+For the `api_key` parameter, populate the `TMV1_API_KEY` environment variable from a Kubernetes Secret.
+
+#### Create and Configure the Kubernetes Secret
+
+1. Create a secret named `tmv1-api-key` with your API key:
+
 ```bash
-kubectl create secret generic tmv1-api-key --from-literal=TMV1_API_KEY=<YOUR_API_KEY> --namespace <LITELLM_NAMESPACE> --create-namespace
+kubectl create secret generic tmv1-api-key \
+  --from-literal=TMV1_API_KEY=<YOUR_API_KEY> \
+  --namespace <LITELLM_NAMESPACE> \
+  --create-namespace
 ```
 
-Add the secret to your LiteLLM values file with `environmentSecrets`:
+Replace `<YOUR_API_KEY>` with the API key obtained in the prerequisites, and `<LITELLM_NAMESPACE>` with the Kubernetes namespace where LiteLLM is deployed.
+
+2. Add the secret to your custom values file:
+
 ```yaml
 environmentSecrets:
   - tmv1-api-key
 ```
 
+#### Install the Helm Chart
 
-Install the LiteLLM Helm chart with your custom values file and the AI Guard overrides file.
+Run the following command to install the LiteLLM Helm chart with the guardrail configuration and latest released guardrail:
 
-To use the latest release:
 ```bash
 helm install <RELEASE_NAME> \
   oci://docker.litellm.ai/berriai/litellm-helm:<HELM_CHART_VERSION> \
@@ -114,7 +140,8 @@ helm install <RELEASE_NAME> \
   --create-namespace
 ```
 
-To pin to a specific version (e.g. `v1.0.0`):
+You can also pin the guardrail to a specific version (e.g., `v1.0.0`):
+
 ```bash
 helm install <RELEASE_NAME> \
   oci://docker.litellm.ai/berriai/litellm-helm:<HELM_CHART_VERSION> \
@@ -124,10 +151,29 @@ helm install <RELEASE_NAME> \
   --create-namespace
 ```
 
-Note: if your deployment already customizes `volumes`, `volumeMounts`, or `extraInitContainers`, you will need to merge the AI Guard overrides entries into your own values file instead of using the `overrides.yaml` file directly.
+Replace:
+- `<RELEASE_NAME>` with a descriptive name for your Helm release.
+- `<HELM_CHART_VERSION>` with the LiteLLM Helm chart version (e.g., `1.83.10`).
+- `<YOUR_VALUES_FILE>` with the path to your custom values file.
+- `<LITELLM_NAMESPACE>` with your Kubernetes namespace.
 
-## Verification
+**Custom volume configuration:** If your deployment already customizes `volumes`, `volumeMounts`, or `extraInitContainers`, merge the entries from `overrides.yaml` into your values file instead of using the `overrides.yaml` file directly.
 
-### Admin UI
-1. From the [LiteLLM Admin UI](https://docs.litellm.ai/docs/proxy/ui), navigate to the `Guardrails` page and confirm that the `trendai-guard` guardrail is listed in the `Guardrails` tab and configured as expected.
-2. Navigate to the `Test Playground` tab to test the guardrail against sample prompts.
+## Verify the Deployment
+
+### Confirm Guardrail Registration
+
+1. Open the [LiteLLM Admin UI](https://docs.litellm.ai/docs/proxy/ui).
+2. Navigate to **Guardrails** > **Guardrails** tab.
+3. Confirm that `trendai-guard` is listed and shows the expected mode and default status.
+
+### Test the Guardrail
+
+1. In the LiteLLM Admin UI, navigate to **Guardrails** > **Test Playground**.
+2. Enter a prompt designed to trigger the content scanners configured in your AI Guard policy in Vision One.
+3. Verify that the guardrail blocks or allows the prompt according to your policy configuration.
+
+**Expected behavior:**
+- Pre-call mode blocks prompts that violate guardrail policies.
+- Post-call mode blocks responses that violate guardrail policies.
+- If an API error occurs and `fallback_on_error` is set to `block`, requests are rejected. If set to `allow`, requests proceed.
