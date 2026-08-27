@@ -15,7 +15,7 @@ extraInitContainers:
       - name: PLUGIN_REPO
         value: "trendmicro/tm-v1-ai-guard-litellm-plugin"
       - name: PLUGIN_VERSION
-        value: "v0.1.1"
+        value: "v0.1.2"
       - name: PLUGIN_FILE_NAME
         value: "trendai_guard.py"
     command:

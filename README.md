@@ -24,18 +24,6 @@ On the LiteLLM third-party integrations page in TrendAI Vision One™, copy the 
 1. In the AWS management console, open the AI Guard CloudFormation stack and click the **Outputs** tab.
 2. Copy `GuardAPIEndpoint`.
 
-**Self-Hosted Kubernetes**
-
-Use the internal Kubernetes Service URL exposed by the AI Guard Helm release. The URL format depends on the namespace where LiteLLM is deployed:
-
-- **Same namespace as AI Guard:** `http://<ai-guard-service-name>:8080`
-- **Different namespace:** `http://<ai-guard-service-name>.<namespace>.svc.cluster.local:8080`
-
-For example, with the default AI Guard Helm chart installation, the service is reachable as:
-
-- `http://ai-guard:8080` (same namespace)
-- `http://ai-guard.trend-ai-security.svc.cluster.local:8080` (different namespace)
-
 ## Configure the LiteLLM Guardrail
 
 ### Required Parameters
@@ -43,15 +31,15 @@ For example, with the default AI Guard Helm chart installation, the service is r
 | Parameter | Description | Use |
 |-----------|-------------|-----|
 | `guardrail` | Specifies the guardrail module. | Set to `trendai_guard.TrendAIGuardrail`. |
-| `api_base` | Base URL for the AI Guard API. | Examples: `https://api.xdr.trendmicro.com/v3.0/aiSecurity`, `https://api.eu.xdr.trendmicro.com/v3.0/aiSecurity`, or the Kubernetes service URL obtained in the prerequisites. |
+| `api_base` | Base URL for the AI Guard API. | Examples: `https://api.xdr.trendmicro.com/v3.0/aiSecurity`, `https://api.eu.xdr.trendmicro.com/v3.0/aiSecurity` |
 | `api_key` | API key for authenticating with the AI Guard API. | Set this as an environment variable (e.g., `os.environ/TMV1_API_KEY`) to avoid storing credentials in configuration files. |
-| `mode` | Specifies when the guardrail runs. | Set to `[pre_call, post_call]` to scan prompts before sending to the LLM and scan responses after receiving from the LLM. |
+| `mode` | Specifies when the guardrail runs. | Set to `[pre_call, post_call]` to scan prompts before sending to the LLM and scan responses after receiving from the LLM. `during_call` and `logging_only` are also supported. |
 
 ### Optional Parameters
 
 | Parameter | Description | Use |
 |-----------|-------------|-----|
-| `app_name` | Name of the application for tracking and identification in the Vision One console. | Default: `litellm`. |
+| `app_name` | Name of the application for policy assignment, tracking, and identification in the Vision One console. | Default: `litellm`. |
 | `default_on` | Whether the guardrail runs on every request without requiring explicit user specification. | Default: `false`. |
 | `fallback_on_error` | Policy for handling errors when making Guard API requests. | Specify `block` to reject requests on error, or `allow` to permit requests on error. Default: `block`. |
 | `timeout` | Timeout for API requests, in seconds. | Default: `5.0`. |
@@ -64,14 +52,14 @@ Add the following to your `config.yaml` file:
 guardrails:
   - guardrail_name: "trendai-guard"
     litellm_params:
-      guardrail: trendai_guard.TrendAIGuardrail          # Required
-      mode: [pre_call, post_call]                        # Required
-      api_base: http://ai-guard:8080                     # Required; adjust URL for your deployment
-      api_key: os.environ/TMV1_API_KEY                   # Required; set environment variable
-      app_name: litellm                                  # Optional; customize for your application
-      default_on: true                                   # Optional; enable by default
-      fallback_on_error: block                           # Optional; block requests on API errors
-      timeout: 5.0                                       # Optional; request timeout in seconds
+      guardrail: trendai_guard.TrendAIGuardrail                # Required
+      mode: [pre_call, post_call]                              # Required
+      api_base: https://api.xdr.trendmicro.com/v3.0/aiSecurity # Required; adjust URL for your deployment
+      api_key: os.environ/TMV1_API_KEY                         # Required; set environment variable
+      app_name: litellm                                        # Optional; customize for your application
+      default_on: true                                         # Optional; enable by default
+      fallback_on_error: block                                 # Optional; block requests on API errors
+      timeout: 5.0                                             # Optional; request timeout in seconds
 ```
 
 ## Deploy the LiteLLM Guardrail
